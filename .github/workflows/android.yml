@@ -15,9 +15,20 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - name: Ajouter les correctifs v4 au jeu
+        run: sed -i 's#</body>#<script src="v4.js"></script></body>#' www/index.html
       - run: npm install
       - run: npx cap add android
-      - run: sed -i 's/<activity /<activity android:screenOrientation="sensorLandscape" /' android/app/src/main/AndroidManifest.xml
+      - name: Paysage, plein écran, vibrations
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' $M
+          sed -i 's#<application#<uses-permission android:name="android.permission.VIBRATE" />\n    <application#' $M
+          S=android/app/src/main/res/values/styles.xml
+          sed -i 's#<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">#&\n        <item name="android:windowFullscreen">true</item>#' $S
+      - name: Logo de l'app
+        run: pip install pillow && python make_icon.py && npx @capacitor/assets@3.0.5 generate --android
+        continue-on-error: true
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
