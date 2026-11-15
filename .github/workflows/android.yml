@@ -15,8 +15,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - name: Ajouter les correctifs v4 au jeu
+      - name: Ajouter les correctifs au jeu
         run: sed -i 's#</body>#<script src="v4.js"></script></body>#' www/index.html
+      - name: Fond sombre de l'appli
+        run: |
+          sed -i 's/"webDir": "www"/"webDir": "www",\n  "backgroundColor": "#0b1020"/' capacitor.config.json
       - run: npm install
       - run: npx cap add android
       - name: Paysage, plein écran, vibrations
@@ -25,7 +28,47 @@ jobs:
           sed -i 's#<activity#<activity android:screenOrientation="sensorLandscape"#' $M
           sed -i 's#<application#<uses-permission android:name="android.permission.VIBRATE" />\n    <application#' $M
           S=android/app/src/main/res/values/styles.xml
-          sed -i 's#<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">#&\n        <item name="android:windowFullscreen">true</item>#' $S
+          sed -i 's#<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">#&\n        <item name="android:windowFullscreen">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>#' $S
+      - name: Plein écran immersif (encoche et barres système)
+        run: |
+          F=android/app/src/main/java/com/gravityflip/game/MainActivity.java
+          test -f $F && cat > $F <<'JAVA'
+          package com.gravityflip.game;
+
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import androidx.core.view.WindowCompat;
+          import androidx.core.view.WindowInsetsCompat;
+          import androidx.core.view.WindowInsetsControllerCompat;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  immersive();
+              }
+
+              @Override
+              public void onWindowFocusChanged(boolean hasFocus) {
+                  super.onWindowFocusChanged(hasFocus);
+                  if (hasFocus) immersive();
+              }
+
+              private void immersive() {
+                  if (Build.VERSION.SDK_INT >= 28) {
+                      WindowManager.LayoutParams lp = getWindow().getAttributes();
+                      lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                      getWindow().setAttributes(lp);
+                  }
+                  WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+                  WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+                  c.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                  c.hide(WindowInsetsCompat.Type.systemBars());
+              }
+          }
+          JAVA
       - name: Logo de l'app
         run: pip install pillow && python make_icon.py && npx @capacitor/assets@3.0.5 generate --android
         continue-on-error: true
