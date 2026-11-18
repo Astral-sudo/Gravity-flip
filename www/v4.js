@@ -27,3 +27,36 @@ loop=function(ts){
  requestAnimationFrame(loop)};
 var r0=rSet;rSet=function(){r0();var p=document.querySelectorAll('#set .pack');if(p[3])p[3].insertAdjacentHTML('afterend',SR('fps','Afficher les FPS'))};
 })();
+
+/* ===== Monde 13 : ENFER (1 niveau extreme) ===== */
+(function(){
+WN.push('Enfer');WS.push(TOT);TOT+=1;
+var HELL=TOT-1,HT=['Enfer','#3a0000','#0a0000','#6a1a12','#ff3a00','flame',0];
+window.HSP=function(x){return 700+260*Math.min(1,x/60000)};
+function hellLevel(){
+ var r=rng(6666),ft=.14,x=0,end=900,pl=-1,pm=false,obs=[],coins=[];
+ for(var i=0;i<260;i++){
+  var q=r(),t='s';
+  if(q<.05)t='m';else if(q<.15)t='w';else if(q<.30)t='roll';else if(q<.38)t='pop';else if(q<.46)t='jet';else if(q<.54)t='lsr';else if(q<.68)t='b';
+  var lane=pl<0?(r()<.5?0:1):(r()<.35?pl:1-pl);
+  var w=t=='s'?30*(1+Math.floor(r()*3)):t=='b'||t=='lsr'?44:t=='pop'?30:40,h=t=='s'||t=='pop'?30:t=='b'?52:40;
+  var s0=HSP(end),same=lane==pl&&t!='m'&&!pm;
+  var gap=same?s0*(.12+r()*.14):s0*(ft+.075+r()*.10);
+  if(t=='m')gap*=1.35;
+  x=end+gap;
+  if(i%3==0&&gap>s0*.25)coins.push({x:(end+x)/2,lane:1-lane});
+  obs.push({t:t,x:t=='roll'?x+173.3:x,lane:lane,w:w,h:h});
+  end=x+w;pl=t=='m'?-1:lane;pm=t=='m';
+ }
+ return{obs:obs,coins:coins,L:end+600,sp:700,ft:ft,d:10,boss:true,hell:true};
+}
+var og=gen;gen=function(g){return g===HELL?hellLevel():og(g)};
+var u0=upd;upd=function(dt){if(lv&&lv.hell&&st=='play')lv.sp=HSP(dist);u0(dt)};
+function hsw(f){return function(){var hh=lv&&lv.hell&&st!='menu',T0;if(hh){T0=TH[S.theme];TH[S.theme]=HT}try{f()}finally{if(hh)TH[S.theme]=T0}}}
+drawBg=hsw(drawBg);
+var dg=hsw(drawGame);
+drawGame=function(){dg();if(lv&&lv.hell&&st=='play'&&dist<1400){cx.save();cx.setTransform(dpr*sc,0,0,dpr*sc,0,0);cx.globalAlpha=Math.min(1,(1400-dist)/400);cx.fillStyle='#ff3a00';cx.font='700 34px Fredoka,sans-serif';cx.textAlign='center';cx.fillText('MONDE 13 · ENFER',W/2,H/2);cx.restore()}};
+var rm0=rMap;rMap=function(){rm0();var c=document.querySelectorAll('#map .card')[WN.length-1];if(c){var sm=c.querySelector('small');if(sm)sm.textContent=S.done<HELL?'Verrouillé':'1 niveau extrême';var pv=c.querySelector('.pv');if(pv){pv.style.background='linear-gradient(#5a0000,#120000)';pv.style.borderTopColor=pv.style.borderBottomColor='#ff3a00'}}};
+var rl0=rLv;rLv=function(w){if(w!==WN.length-1)return rl0(w);go('lvls');$('#lvls').innerHTML='<h2>Monde 13 · Enfer</h2><p class="msg">Un seul niveau. Vitesse folle, pièges partout.<br>Possible… en théorie.</p><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr));max-width:120px"><div class="card lv" onclick="play('+HELL+')" style="border-color:#ff3a00">1</div></div><p></p>'+back('map')};
+var rn0=rMenu;rMenu=function(){rn0();var b=document.querySelector('#menu .btn.big');if(b)b.setAttribute('onclick','play(Math.min(S.done,'+(HELL-1)+'))')};
+})();
