@@ -5,6 +5,16 @@ on:
   workflow_dispatch:
 jobs:
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: normal
+            appid: com.gravityflip.play
+            appname: Gravity Flip
+          - variant: admin
+            appid: com.gravityflip.admin
+            appname: Gravity Flip Admin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,10 +26,32 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Ajouter les correctifs au jeu
-        run: sed -i 's#</body>#<script src="v4.js"></script></body>#' www/index.html
-      - name: Fond sombre de l'appli
+        run: sed -i 's#</body>#<script src="v4.js"></script><script src="variant.js"></script></body>#' www/index.html
+      - name: Version admin
+        if: matrix.variant == 'admin'
         run: |
-          sed -i 's/"webDir": "www"/"webDir": "www",\n  "backgroundColor": "#0b1020"/' capacitor.config.json
+          cat > www/variant.js <<'JS'
+          (function(){
+          var BIG=999999999;
+          function give(){S.coins=BIG;S.gems=BIG;S.skins=SK.map(function(_,i){return i});S.themes=TH.map(function(_,i){return i});S.done=TOT}
+          give();save();
+          var h0=hud;
+          hud=function(){S.coins=BIG;S.gems=BIG;h0();document.getElementById('c').textContent='∞';document.getElementById('g').textContent='∞'};
+          hud();
+          })();
+          JS
+      - name: Version normale
+        if: matrix.variant != 'admin'
+        run: |
+          cat > www/variant.js <<'JS'
+          (function(){
+          buyP=function(){toast('Les achats arrivent bientôt')};
+          var i0=iap;iap=function(k){i0(k);var m=document.querySelector('#iap .msg');if(m)m.textContent='Les achats arrivent bientôt.'};
+          })();
+          JS
+      - name: Config de la version
+        run: |
+          sed -i 's/com.gravityflip.game/${{ matrix.appid }}/; s/"appName": "Gravity Flip"/"appName": "${{ matrix.appname }}"/; s/"webDir": "www"/"webDir": "www",\n  "backgroundColor": "#0b1020"/' capacitor.config.json
       - run: npm install
       - run: npx cap add android
       - name: Paysage, plein écran, vibrations
@@ -31,10 +63,11 @@ jobs:
           sed -i 's#<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">#&\n        <item name="android:windowFullscreen">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>#' $S
       - name: Plein écran immersif (encoche et barres système)
         run: |
-          F=android/app/src/main/java/com/gravityflip/game/MainActivity.java
-          test -f $F && cat > $F <<'JAVA'
-          package com.gravityflip.game;
-
+          F=$(find android/app/src/main/java -name MainActivity.java | head -n 1)
+          [ -n "$F" ] || exit 0
+          P=$(grep -m1 '^package' "$F")
+          printf '%s\n' "$P" > "$F"
+          cat >> "$F" <<'JAVA'
           import android.os.Build;
           import android.os.Bundle;
           import android.view.WindowManager;
@@ -69,6 +102,9 @@ jobs:
               }
           }
           JAVA
+      - name: Icône dorée pour la version admin
+        if: matrix.variant == 'admin'
+        run: sed -i 's/(124, 92, 255), (255, 106, 213)/(20, 24, 40), (255, 176, 0)/' make_icon.py
       - name: Logo de l'app
         run: pip install pillow && python make_icon.py && npx @capacitor/assets@3.0.5 generate --android
         continue-on-error: true
@@ -76,5 +112,5 @@ jobs:
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: gravity-flip-apk
+          name: gravity-flip-${{ matrix.variant }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
